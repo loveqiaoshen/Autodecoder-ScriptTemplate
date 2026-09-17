@@ -1,6 +1,7 @@
 # Autodecoder-ScriptTemplate
 Autodecoder-ScriptTemplate / autodecoder 插件的通用脚本模板
 
+<a href="README.md"><img src="https://img.shields.io/badge/-简体中文-red.svg" alt="简体中文"></a>
 <a href="README_EN.md"><img src="https://img.shields.io/badge/-English-blue.svg" alt="English"></a>
 
 # 脚本介绍
