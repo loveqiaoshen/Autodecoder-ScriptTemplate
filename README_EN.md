@@ -1,8 +1,9 @@
-<a href="README.md"><img src="https://img.shields.io/badge/-简体中文-red.svg" alt="简体中文"></a>
-
 # Script Introduction
 
 This is a Flask-based **universal encryption/decryption middleware** designed to work with AutoDecoder, Burp plugins, and similar tools to encrypt, decrypt, encode, and decode specified parameters in HTTP requests/responses. It supports five major algorithm categories: **symmetric encryption, asymmetric encryption, Chinese national cryptography (SM series), hashing, and HMAC**. It also supports multi-parameter, multi-layer encryption/decryption, and multiple encoding chains, with automatic detection of JSON and form data formats.
+
+<a href="README.md"><img src="https://img.shields.io/badge/-简体中文-red.svg" alt="简体中文"></a>
+<a href="README_EN.md"><img src="https://img.shields.io/badge/-English-blue.svg" alt="English"></a>
 
 ---
 
