@@ -1,6 +1,8 @@
 # Autodecoder-ScriptTemplate
 Autodecoder-ScriptTemplate / autodecoder 插件的通用脚本模板
 
+<a href="README_EN.md"><img src="https://img.shields.io/badge/-English-blue.svg" alt="English"></a>
+
 # 脚本介绍
 
 这是一个基于 Flask 的**通用加解密中间件**，用于配合 AutoDecoder、Burp 插件等工具对 HTTP 请求/响应中的指定参数做加解密、编解码处理。支持**对称加密、非对称加密、国密、哈希、HMAC**五大类算法，支持多参数、多层加解密、多重编码链，自动识别 JSON 与表单格式。
