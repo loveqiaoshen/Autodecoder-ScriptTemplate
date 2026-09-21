@@ -1,16 +1,22 @@
-# Script Introduction
-
-This is a Flask-based **universal encryption/decryption middleware** designed to work with AutoDecoder, Burp plugins, and similar tools to encrypt, decrypt, encode, and decode specified parameters in HTTP requests/responses. It supports five major algorithm categories: **symmetric encryption, asymmetric encryption, Chinese national cryptography (SM series), hashing, and HMAC**. It also supports multi-parameter, multi-layer encryption/decryption, and multiple encoding chains, with automatic detection of JSON and form data formats.
-
 <a href="README.md"><img src="https://img.shields.io/badge/-简体中文-red.svg" alt="简体中文"></a>
 <a href="README_EN.md"><img src="https://img.shields.io/badge/-English-blue.svg" alt="English"></a>
+
+# Introduction
+
+Interactive Crypto Tool is a Flask-based **interactive encryption/decryption configuration console**, designed to work with AutoDecoder, Burp plugins, and similar tools to encrypt, decrypt, encode, and decode specified parameters in HTTP requests/responses.
+
+Unlike traditional script templates, it turns "configuration" from editing code into **running a terminal menu**: algorithms, keys, parameters, and encoding chains are all configured through a visual menu and automatically persisted to a JSON file, which is auto-loaded on the next start.
+
+It supports five major algorithm categories: **symmetric encryption, asymmetric encryption, Chinese national cryptography (SM series), hashing, and HMAC**. It also supports multi-parameter, multi-layer encryption/decryption, and multiple encoding chains, with automatic detection of JSON and form data formats.
 
 ---
 
 ## 1. Overall Structure
 
 ```text
-Configuration (algorithm selection / global switches / keys / parameter config)
+Interactive Terminal Layer (i18n / color menu / input prompts)
+        ↓
+Config Persistence Layer (crypto_tool_config.json, auto-save / auto-load)
         ↓
 Algorithm Layer
     ├─ Symmetric: AES / DES / 3DES / Blowfish / CAST / RC2 / RC4 / SM4
@@ -18,44 +24,85 @@ Algorithm Layer
     ├─ Hashing: MD5 / SHA1 / SHA256 / SHA512 / SM3
     └─ HMAC: hmac-md5 / hmac-sha1 / hmac-sha256 / hmac-sha512
         ↓
-Encoding Layer (none / url / base64 / hex)
+Encoding Layer (none / url / base64 / base64url / hex / base32 / html / unicode)
         ↓
-Layer Parsing & Multi-layer Encryption/Decryption (multi_encrypt / multi_decrypt)
+Multi-layer Engine (multi_encrypt / multi_decrypt)
         ↓
-JSON Processing / Form Processing
+Body Processing (JSON / form / auto)
         ↓
-Unified Entry: process_data
-        ↓
-Flask Routes: /encode and /decode
+Flask Routes /encode and /decode
 ```
 
 ---
 
-## 2. Supported Algorithms
+## 2. Key Features
 
-### 2.1 Symmetric Encryption
+### 2.1 Interactive Configuration — No More Code Editing
 
-| Algorithm | Config Key | Dependency | Key Length |
-|---|---|---|---|
-| AES | `aes` | `pycryptodome` | 16 / 24 / 32 bytes |
-| DES | `des` | `pycryptodome` | 8 bytes |
-| 3DES (DESede) | `3des` | `pycryptodome` | 16 / 24 bytes |
-| Blowfish | `blowfish` | `pycryptodome` | 4 ~ 56 bytes |
-| CAST | `cast` | `pycryptodome` | 5 ~ 16 bytes |
-| RC2 | `rc2` | `pycryptodome` | 5 ~ 16 bytes |
-| RC4 (stream) | `rc4` | `pycryptodome` | 5 ~ 256 bytes |
-| SM4 | `sm4` | `gmssl` + `pycryptodome` (padding) | 16 bytes |
+After starting the script, a colorful terminal menu is shown. All configuration is done through numeric options, without editing source code:
 
-Supports `CBC` / `ECB` modes with `pkcs7` padding. RC4 is a stream cipher and requires no IV or padding.
+- **Menu 0**: One-click install / repair environment
+- **Menu 1**: Configure algorithms
+- **Menu 2**: Data format (auto / JSON / form)
+- **Menu 3**: Configure parameters (name + layers + encoding chains)
+- **Menu 4**: Advanced settings (form URL coding, default params, debug output, listen address, config file manager)
+- **Menu 5**: Preview pipeline + live round-trip test
+- **Menu 6**: Start server
+- **Menu a**: Switch language (Chinese / English)
 
-### 2.2 Asymmetric Encryption
+### 2.2 Auto-Persisted Config
+
+All configuration is automatically saved to `crypto_tool_config.json` in the same directory and auto-loaded on next start. The path can be overridden with the `CRYPTO_TOOL_CONFIG` environment variable.
+
+### 2.3 Multi-language
+
+Menu `a` switches between Chinese and English at any time. The choice is also saved to the config file.
+
+### 2.4 One-click Dependency Install
+
+Menu `0` detects Flask / pycryptodome / gmssl and supports selecting a pip mirror (official / Tsinghua / Aliyun / Tencent / none) for one-click install.
+
+### 2.5 Multi-layer Encryption
+
+A single parameter can be configured with a multi-layer chain, e.g. "inner AES → outer RSA". Each layer can also have its own before-enc / after-enc encoding chains.
+
+### 2.6 Base64 Compatibility Fix
+
+To handle the common AutoDecoder issue where `+` in Base64 is decoded as a space, the `_b64d` function is compatible: it restores spaces to `+`, supports URL-safe variants, pads missing `=`, and strips whitespace/newlines.
+
+### 2.7 Live Preview and Round-trip Test
+
+Menu 5 draws the encryption/decryption pipeline for each parameter and provides a round-trip test to verify the configuration is symmetric.
+
+---
+
+## 3. Supported Algorithms
+
+### 3.1 Symmetric Encryption
+
+| Algorithm | Config Key | Dependency | Key Length | Modes |
+|---|---|---|---|---|
+| AES | `aes` | `pycryptodome` | 16 / 24 / 32 bytes | CBC / ECB / CFB / OFB / CTR / GCM |
+| DES | `des` | `pycryptodome` | 8 bytes | CBC / ECB / CFB / OFB / CTR |
+| 3DES | `3des` | `pycryptodome` | 16 / 24 bytes | CBC / ECB / CFB / OFB / CTR |
+| Blowfish | `blowfish` | `pycryptodome` | 4 ~ 56 bytes | CBC / ECB / CFB / OFB / CTR |
+| CAST | `cast` | `pycryptodome` | 5 ~ 16 bytes | CBC / ECB / CFB / OFB / CTR |
+| RC2 | `rc2` | `pycryptodome` | 5 ~ 16 bytes | CBC / ECB / CFB / OFB / CTR |
+| RC4 | `rc4` | `pycryptodome` | 5 ~ 256 bytes | Stream cipher, no IV / no padding |
+| SM4 | `sm4` | `gmssl` + `pycryptodome` | 16 bytes | CBC / ECB |
+
+Padding options: `pkcs7` / `pkcs5` / `zero` / `iso7816` / `ansiX923` / `none`.
+
+### 3.2 Asymmetric Encryption
 
 | Algorithm | Config Key | Dependency | Notes |
 |---|---|---|---|
-| RSA | `rsa` | `pycryptodome` | PKCS1 / OAEP, auto chunking |
-| SM2 | `sm2` | `gmssl` | C1C2C3 / C1C3C2 |
+| RSA | `rsa` | `pycryptodome` | PKCS1_v1_5 / OAEP (sha1/sha256/sha384/sha512), auto chunking |
+| SM2 | `sm2` | `gmssl` | C1C3C2 / C1C2C3 |
 
-### 2.3 Hashing (One-way)
+RSA accepts PEM-formatted keys or pure Base64 content; the script tries to parse automatically.
+
+### 3.3 Hashing (One-way)
 
 | Algorithm | Config Key | Dependency |
 |---|---|---|
@@ -65,7 +112,7 @@ Supports `CBC` / `ECB` modes with `pkcs7` padding. RC4 is a stream cipher and re
 | SHA-512 | `sha512` | Built-in `hashlib` |
 | SM3 | `sm3` | `gmssl` |
 
-### 2.4 HMAC (One-way)
+### 3.4 HMAC (One-way)
 
 | Algorithm | Config Key | Dependency |
 |---|---|---|
@@ -74,53 +121,48 @@ Supports `CBC` / `ECB` modes with `pkcs7` padding. RC4 is a stream cipher and re
 | HMAC-SHA256 | `hmac-sha256` | Built-in `hmac` + `hashlib` |
 | HMAC-SHA512 | `hmac-sha512` | Built-in `hmac` + `hashlib` |
 
-HMAC key is configured in `HMAC_CONFIG["key"]`.
+### 3.5 Pure Encoding
 
-### 2.5 Pure Encoding
+Select "None" as the algorithm to only run the encoding chain without encryption.
 
-`none`: No encryption/decryption, encoding chain only.
+Supported encodings: `none` / `url` / `base64` / `base64url` / `hex` / `base32` / `html` / `unicode`.
 
 ---
 
-## 3. Installation
+## 4. Installation
+
+The script includes a one-click install menu (menu 0) that detects the following dependencies:
+
+| Dependency | Purpose |
+|---|---|
+| `flask` | Web framework (for /encode and /decode endpoints) |
+| `pycryptodome` | AES / DES / 3DES / Blowfish / CAST / RC2 / RC4 / RSA and various paddings |
+| `gmssl` | SM2 / SM3 / SM4 Chinese national algorithms |
+
+Manual install:
 
 ```bash
-# Required
-pip install flask
-
-# Symmetric encryption + RSA + hash padding
-pip install pycryptodome
-
-# Chinese national cryptography (SM2 / SM3 / SM4)
-pip install gmssl
+pip install flask pycryptodome gmssl
 ```
 
-| Algorithm | Required Library |
-|---|---|
-| AES / DES / 3DES / Blowfish / CAST / RC2 / RC4 | `pycryptodome` |
-| RSA | `pycryptodome` |
-| SM4 (with pkcs7 padding) | `pycryptodome` + `gmssl` |
-| SM2 | `gmssl` |
-| SM3 | `gmssl` |
-| MD5 / SHA1 / SHA256 / SHA512 | Python built-in, no installation |
-| HMAC-MD5 / SHA1 / SHA256 / SHA512 | Python built-in, no installation |
+Unused libraries can be omitted; the script only checks them when the corresponding algorithm is invoked.
 
 ---
 
-## 4. External Interfaces
+## 5. External Interfaces
 
-The script listens on `0.0.0.0:8888` and provides two endpoints:
+The script listens on `0.0.0.0:8888` (configurable in menu 4) and provides two endpoints:
 
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/encode` | POST | Encrypt parameters |
 | `/decode` | POST | Decrypt parameters |
 
-Both endpoints accept three form fields:
+Both accept three form fields:
 
 | Field | Description |
 |---|---|
-| `dataBody` | Raw request body or response body |
+| `dataBody` | Raw request or response body |
 | `dataHeaders` | Raw request headers |
 | `requestorresponse` | `"request"` or `"response"` |
 
@@ -129,387 +171,230 @@ Return rules:
 - `requestorresponse == "request"`: returns `headers + \r\n\r\n\r\n\r\n + processed body`
 - Otherwise: returns only the processed body
 
+### Integrating with AutoDecoder / Burp
+
+- Encryption: `http://127.0.0.1:8888/encode`
+- Decryption: `http://127.0.0.1:8888/decode`
+
+> Tip: even if the server listens on `0.0.0.0`, using `127.0.0.1` in AutoDecoder works.
+
 ---
 
-## 5. Configuration Details
+## 6. Quick Start
 
-### 5.1 `ALGORITHM`: Global Default Algorithm
+### 6.1 Start the Script
 
-```python
-ALGORITHM = "none"   # specific algorithm name or "none"
+```bash
+python Template_v2.0.py
 ```
 
-- Specific algorithm: all layers without an explicit algorithm use it.
-- Set to `"none"`: auto-detects which algorithm config has `enabled=True`, in the order **AES → DES → 3DES → SM4 → Blowfish → CAST → RC2 → RC4 → RSA → SM2**.
+The main menu appears. If dependencies are missing, pick `0` first.
 
-Priority:
+### 6.2 Configure Algorithms (Menu 1)
 
-```text
-Layer explicit algorithm (including "none")  >  Global ALGORITHM  >  Auto-detect enabled
-```
+Algorithms are grouped by category, showing their dependency and configuration status.
 
-### 5.2 `DEBUG_PRINT`: Print Plaintext/Ciphertext
+- Pick any `○ unconfigured` algorithm to enter details
+- Edit key / IV / mode / padding / public key / private key, etc.
+- Use `r` to restore sample defaults, `c` to clear
 
-```python
-DEBUG_PRINT = True
-```
+### 6.3 Configure Data Format (Menu 2)
 
-Can be enabled during security testing; recommended to disable in multi-user or log-collected environments.
+Choose `auto` / `json` / `form`.
 
-### 5.3 `FORM_VALUE_URL_CODED`: URL Encoding Contract for Form Values
+### 6.4 Configure Parameters (Menu 3)
 
-```python
-FORM_VALUE_URL_CODED = True
-```
+- Add a parameter (e.g. `password` / `token` / `encryptedData`)
+- Add one or more layers to it
+- Each layer can have its own algorithm and before/after encoding chains
 
-- `True` (default): client URL-encodes the value of `dataBody`; the script `quote`s on encryption and `unquote`s on decryption.
-- `False`: client does no extra encoding; the script does none on either side.
+### 6.5 Advanced Settings (Menu 4)
 
-Both sides must match, otherwise encryption/decryption will be asymmetric.
+- Auto URL encode/decode form values (`FORM_VALUE_URL_CODED`)
+- Default handling for unconfigured params (`ENABLE_DEFAULT` + `DEFAULT_LAYERS`)
+- Debug output toggle
+- Listen host / port
+- Config file manager (save / load / factory reset / delete)
 
-### 5.4 Algorithm Configuration
+### 6.6 Preview Pipeline (Menu 5)
 
-Each algorithm has its own configuration dictionary, for example:
+Draws the encryption/decryption pipeline and runs a round-trip test.
 
-```python
-AES_CONFIG = {
-    "enabled": True,
-    "key": b"1234567890123456",
-    "iv": b"1234567890123456",
-    "mode": "CBC",              # "CBC" / "ECB"
-    "padding": "pkcs7",         # "pkcs7" / "none"
-}
-```
+### 6.7 Start Server (Menu 6)
 
-DES, 3DES, Blowfish, CAST, RC2, SM4 have similar structures with different key and IV lengths.
+Starts the Flask server, prints all reachable URLs, and stops on Enter.
 
-RC4 only needs `key`:
+---
 
-```python
-RC4_CONFIG = {
-    "enabled": False,
-    "key": b"1234567890123456",
-}
-```
+## 7. Encoding Chains and Layer Order
 
-RSA and SM2 use key pairs:
-
-```python
-RSA_CONFIG = {
-    "enabled": False,
-    "public_key": "",       # PEM string
-    "private_key": "",
-    "padding": "pkcs1",     # "pkcs1" / "oaep"
-}
-
-SM2_CONFIG = {
-    "enabled": False,
-    "public_key": "",       # hex, 128 chars (X||Y)
-    "private_key": "",      # hex, 64 chars
-    "mode": 1,              # 0=C1C2C3, 1=C1C3C2
-}
-```
-
-HMAC configuration:
-
-```python
-HMAC_CONFIG = {
-    "enabled": False,
-    "key": b"shared-secret",
-    "hash_algorithm": "sha256",   # "md5" / "sha1" / "sha256" / "sha512"
-}
-```
-
-### 5.5 `TARGET_PARAMS`: Parameters to Process
-
-Two syntaxes are supported.
-
-**Single-layer syntax (simple cases)**:
-
-```python
-TARGET_PARAMS = {
-    "password": {
-        "algorithm": "aes",
-        "encrypt_encodings": ["base64"],
-        "decrypt_decodings": ["base64"],
-    },
-}
-```
-
-**Multi-layer syntax (multiple encryption rounds)**:
-
-```python
-TARGET_PARAMS = {
-    "encryptedData": {
-        "layers": [
-            # Inner layer: executed first
-            {"algorithm": "aes",
-             "encrypt_encodings": ["none"],
-             "decrypt_decodings": ["none"]},
-            # Outer layer: executed later
-            {"algorithm": "rsa",
-             "encrypt_encodings": ["base64"],
-             "decrypt_decodings": ["base64"]},
-        ],
-    },
-}
-```
-
-Meaning of `algorithm` inside a `layer`:
-
-| Value | Meaning |
-|---|---|
-| Omitted / `None` | Use global `ALGORITHM` |
-| Specific algorithm name (e.g. `"aes"`, `"des"`, `"rsa"`) | Force this algorithm |
-| `"none"` | Skip encryption/decryption, only run encoding/decoding chain |
-
-Available encodings:
+### 7.1 Encodings
 
 | Encoding | On Encryption | On Decryption |
 |---|---|---|
-| `"none"` | Unchanged | Unchanged |
-| `"url"` | `quote(data, safe='')` | `unquote(data)` |
-| `"base64"` | Base64 encode | Base64 decode |
-| `"hex"` | Hex encode | Hex decode |
+| `none` | Unchanged | Unchanged |
+| `url` | `quote(data, safe='')` | `unquote(data)` |
+| `base64` | Base64 encode | Base64 decode |
+| `base64url` | Base64URL encode (without `=`) | Base64URL decode |
+| `hex` | Hex encode | Hex decode |
+| `base32` | Base32 encode | Base32 decode |
+| `html` | HTML escape | HTML unescape |
+| `unicode` | Unicode escape | Unicode unescape |
 
-### 5.6 `ENABLE_DEFAULT` and `DEFAULT_LAYERS`
+### 7.2 Multi-layer Order
 
-For parameters not listed in `TARGET_PARAMS` that should also be processed:
-
-```python
-ENABLE_DEFAULT = True
-DEFAULT_LAYERS = [
-    {"algorithm": None, "encrypt_encodings": ["none"], "decrypt_decodings": ["none"]},
-]
-```
-
-`algorithm` as `None` means use global `ALGORITHM`.
-
----
-
-## 6. Multi-layer Execution Order
-
-**Encryption**: the `layers` list runs **from inner to outer**, i.e. index 0 first.
+**Encryption**: layers run **top-down**, i.e. index 0 first.
 
 ```text
 Plaintext
-  → Layer 0 encrypt → Layer 0 encode
-  → Layer 1 encrypt → Layer 1 encode
+  → Layer 0: encode(pre) → encrypt → encode(post)
+  → Layer 1: encode(pre) → encrypt → encode(post)
   → Final ciphertext
 ```
 
-**Decryption**: the `layers` list runs **from outer to inner**, i.e. index 1 first.
+**Decryption**: layers run **bottom-up**, i.e. the last layer first.
 
 ```text
 Final ciphertext
-  → Layer 1 decode → Layer 1 decrypt
-  → Layer 0 decode → Layer 0 decrypt
+  → Layer 1: decode(post) → decrypt → decode(pre)
+  → Layer 0: decode(post) → decrypt → decode(pre)
   → Plaintext
 ```
 
-Mnemonic: **`layers` order = encryption order; decryption is the reverse.**
+Mnemonic: **layer order = encryption order; decryption is the reverse.**
 
 ---
 
-## 7. Data Format Detection
+## 8. Data Format Detection
 
-`process_data` automatically determines the type of `dataBody`:
+`process_payload` decides based on `data_mode`:
 
-1. **Parsable as a JSON object**: JSON processing, only top-level string values are processed.
-2. **Parsable as a JSON array or scalar**: returned as-is, no processing.
-3. **Otherwise**: form processing, split by `&`, find items whose `key` is in `TARGET_PARAMS`, process only the `value`.
+1. **`auto`**: try JSON first, fall back to form.
+2. **`json`**: force JSON, only top-level string values are processed.
+3. **`form`**: force form, split by `&`, process only values whose `key` is in the parameter list.
+
+JSON arrays and scalars are returned as-is.
 
 ---
 
-## 8. Usage Steps
+## 9. Config File
 
-### 8.1 Install Dependencies
+Default path: `crypto_tool_config.json` in the script's directory.
+
+Override with an environment variable:
 
 ```bash
-pip install flask pycryptodome gmssl
+export CRYPTO_TOOL_CONFIG=/path/to/your_config.json
 ```
 
-Unused algorithm libraries can be omitted; the script only checks them when the corresponding algorithm is invoked.
+Structure:
 
-### 8.2 Configure Algorithms
-
-Fill in keys, IVs, modes, padding, public/private keys, HMAC keys, etc., according to the target system.
-
-### 8.3 Configure Target Parameters
-
-Write the parameter names and encoding chains to be processed into `TARGET_PARAMS`.
-
-### 8.4 Start the Service
-
-```bash
-python run.py
+```json
+{
+  "_meta": {
+    "tool": "interactive-crypto-tool",
+    "version": "1.3.0",
+    "saved_at": "2024-01-01 12:00:00"
+  },
+  "lang": "zh",
+  "settings": { ... },
+  "algo": { ... },
+  "params": { ... }
+}
 ```
 
-### 8.5 Integrate with AutoDecoder / Burp
-
-- Encryption endpoint: `http://127.0.0.1:8888/encode`
-- Decryption endpoint: `http://127.0.0.1:8888/decode`
-- Request fields: `dataBody` / `dataHeaders` / `requestorresponse`
+Any change is auto-saved, and a final save happens on exit.
 
 ---
 
-## 9. Typical Configuration Examples
+## 10. Typical Scenarios
 
-### Example 1: Single-parameter AES + Base64
+### Scenario 1: Single-param AES-CBC + Base64
 
-```python
-ALGORITHM = "aes"
-TARGET_PARAMS = {
-    "encryptedData": {
-        "algorithm": "aes",
-        "encrypt_encodings": ["base64"],
-        "decrypt_decodings": ["base64"],
-    },
-}
-```
+1. Menu 1 → AES → fill Key / IV → CBC / pkcs7
+2. Menu 3 → add `encryptedData` → add one layer → AES → after-enc = `base64`
+3. Menu 6 → start server
+4. Use `http://127.0.0.1:8888/encode` and `/decode` in AutoDecoder
 
-### Example 2: DES Encryption
+### Scenario 2: Multi-layer AES → RSA
 
-```python
-DES_CONFIG = {
-    "enabled": True,
-    "key": b"12345678",
-    "iv": b"12345678",
-    "mode": "CBC",
-    "padding": "pkcs7",
-}
-ALGORITHM = "des"
-```
+Menu 3 → add two layers:
+- Layer 1: AES, no before/after encodings
+- Layer 2: RSA, after-enc = `base64`
 
-### Example 3: 3DES Encryption
+### Scenario 3: Encoding Only
 
-```python
-DES3_CONFIG = {
-    "enabled": True,
-    "key": b"123456789012345678901234",
-    "iv": b"12345678",
-    "mode": "CBC",
-    "padding": "pkcs7",
-}
-ALGORITHM = "3des"
-```
+Menu 3 → add one layer → algorithm = None → after-enc = `base64,url` (decryption reverses automatically)
 
-### Example 4: Multiple Parameters with Different Algorithms
+### Scenario 4: HMAC-SHA256 Signature
 
-```python
-TARGET_PARAMS = {
-    "encryptedData": {
-        "algorithm": "aes",
-        "encrypt_encodings": ["url"],
-        "decrypt_decodings": ["url"],
-    },
-    "password": {
-        "algorithm": "rsa",
-        "encrypt_encodings": ["base64"],
-        "decrypt_decodings": ["base64"],
-    },
-}
-```
+Menu 1 → configure HMAC-SHA256 key
+Menu 3 → add `sign` → one layer → HMAC-SHA256
 
-### Example 5: Multi-layer AES → RSA → Base64
+> HMAC is one-way; `/encode` generates a signature and `/decode` raises `NotImplementedError`, which is expected.
 
-```python
-TARGET_PARAMS = {
-    "encryptedData": {
-        "layers": [
-            {"algorithm": "aes",
-             "encrypt_encodings": ["none"],
-             "decrypt_decodings": ["none"]},
-            {"algorithm": "rsa",
-             "encrypt_encodings": ["base64"],
-             "decrypt_decodings": ["base64"]},
-        ],
-    },
-}
-```
+### Scenario 5: JSON Body
 
-### Example 6: JSON Format
-
-`dataBody`:
+If the body is:
 
 ```json
 {"encryptedData": "xxxxx", "username": "admin"}
 ```
 
-The script automatically recognizes JSON, processes only `encryptedData`, and keeps `username` unchanged.
-
-### Example 7: Pure Encoding without Encryption/Decryption
-
-```python
-TARGET_PARAMS = {
-    "token": {
-        "layers": [
-            {"algorithm": "none",
-             "encrypt_encodings": ["base64", "url"],
-             "decrypt_decodings": ["url", "base64"]},
-        ],
-    },
-}
-```
-
-### Example 8: HMAC-SHA256 Signature
-
-```python
-HMAC_CONFIG = {
-    "enabled": True,
-    "key": b"shared-secret",
-    "hash_algorithm": "sha256",
-}
-TARGET_PARAMS = {
-    "sign": {
-        "algorithm": "hmac-sha256",
-        "encrypt_encodings": ["none"],
-        "decrypt_decodings": ["none"],
-    },
-}
-```
-
-> HMAC is one-way: `/encode` can generate a signature, while `/decode` raises `NotImplementedError`.
+Choose `json` or `auto` in menu 2; the script processes only `encryptedData` and keeps `username` unchanged.
 
 ---
 
-## 10. Special Notes on Hashing and HMAC
+## 11. Hashing and HMAC
 
-Hashing (MD5/SHA/SM3) and HMAC are **one-way algorithms**:
+Hashing and HMAC are **one-way algorithms**:
 
-| Algorithm | Encrypt (compute digest) | Decrypt |
+| Algorithm | Encrypt (digest) | Decrypt |
 |---|---|---|
 | MD5 / SHA-1 / SHA-256 / SHA-512 / SM3 | ✅ | ❌ Irreversible |
 | HMAC-MD5 / HMAC-SHA256 / ... | ✅ | ❌ Irreversible |
 
-If a parameter is configured with hashing or HMAC in `TARGET_PARAMS`, `/decode` will directly raise `NotImplementedError`, which is expected.
+If a parameter is configured with hashing or HMAC, `/decode` will raise `NotImplementedError`.
 
 ---
 
-## 11. Limitations and Notes
+## 12. Limitations and Notes
 
-### Functional Limitations
+### Functional
 
 1. **Only form data and JSON objects are processed**. `/decode` reads from `request.form.get('dataBody')`; the client must submit with `application/x-www-form-urlencoded`.
-2. **JSON only processes top-level string values**. Nested objects like `{"data": {"token": "xxx"}}` are not processed.
-3. **JSON arrays and scalars are returned as-is**, without processing.
-4. **HMAC-SM3 is not implemented yet** and raises `NotImplementedError`.
+2. **JSON only processes top-level string values**. Nested objects are not processed.
+3. **JSON arrays and scalars are returned as-is**.
+4. **HMAC-SM3 is not implemented**.
 
-### Security Notes
+### Security
 
-1. **Keys and IVs must match the target system**, otherwise `Padding is incorrect` or garbled decryption will occur.
-2. **`DEBUG_PRINT` is enabled by default and prints plaintext**; recommended to disable in multi-user environments.
-3. **Disable `app.debug` in production**.
-4. For legally authorized security testing only.
+1. **Keys and IVs must match the target system**, otherwise `Padding is incorrect` or garbled output occurs.
+2. **`DEBUG_PRINT` is enabled by default and prints plaintext**; disable in multi-user environments.
+3. **Do not enable debug in production** (Flask debug is off by default in the script).
+4. **For legally authorized security testing only**.
 
-### Encoding Conventions
+### FAQ
 
-1. `url` in the encoding chain uses `quote(data, safe='')` / `unquote(data)`, strictly symmetric.
-2. Form-level URL encoding is controlled by `FORM_VALUE_URL_CODED`, decoupled from the encoding chain.
-3. `layers` order = encryption order; decryption runs in reverse.
+**Q: `Padding is incorrect` on decryption?**
+
+A: Check Key / IV / Mode / Padding against the target system. The script prints the ciphertext length, decrypted length, and last byte in the exception message for easy diagnosis.
+
+**Q: `+` in Base64 becomes a space and decryption fails?**
+
+A: `_b64d` already handles this — it restores spaces to `+`, supports URL-safe variants, and pads missing `=`.
+
+**Q: Where is the config file?**
+
+A: `crypto_tool_config.json` in the same directory, or the path specified by `CRYPTO_TOOL_CONFIG`.
+
+**Q: How to clear the config?**
+
+A: Menu 4 → Config file manager → Factory reset, or delete `crypto_tool_config.json`.
 
 ---
 
-## 12. One-sentence Summary
+## 13. One-sentence Summary
 
-**Modify the top configuration, start the service, and integrate with your tool.** Whether it is AES, DES, 3DES, SM4, RSA, SM2, or MD5, SHA, SM3, HMAC; whether single-layer or multi-layer, single-parameter or multi-parameter, JSON or form — all can be described via `TARGET_PARAMS` plus `layers`, and the script will automatically encrypt/decrypt according to the rules. The dependency libraries for all algorithms are annotated in the configuration section; install as needed.
+**Run it → configure in the menu → start server → integrate with your tool.**  
+Whether it is AES / DES / 3DES / SM4 / RSA / SM2, or MD5 / SHA / SM3 / HMAC; single-layer or multi-layer, single-parameter or multi-parameter, JSON or form — everything is configurable through the visual menu, and the script applies the rules automatically. The config is saved on the fly and auto-loaded on next start.
